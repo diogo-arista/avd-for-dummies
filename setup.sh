@@ -55,23 +55,37 @@ mkdir -p "${LAB_DIR}/logs"
 
 # ── 6. Check cEOS image ───────────────────────────────────────────────────────
 echo ""
-if docker images | grep -q "arista/ceos"; then
+if docker images | grep -q "ceos"; then
   echo "==> cEOS image found:"
-  docker images | grep "arista/ceos"
+  docker images | grep "ceos"
 else
-  echo "WARNING: No arista/ceos image found in Docker."
+  echo "WARNING: No ceos image found in Docker."
   echo ""
   echo "  1. Download cEOS-lab from https://www.arista.com (free account required)"
-  echo "  2. Import it: docker import cEOS-lab-4.32.0F.tar.xz arista/ceos:4.32.0F"
+  echo "  2. Import it: docker import cEOS-lab-4.35.0F.tar.xz ceos:latest"
   echo ""
 fi
+
+# ── 7. Create output directories for codespaces lab too ──────────────────────
+mkdir -p "${LAB_DIR}/codespaces/intended/configs"
+mkdir -p "${LAB_DIR}/codespaces/intended/structured_configs"
+mkdir -p "${LAB_DIR}/codespaces/documentation"
+mkdir -p "${LAB_DIR}/codespaces/reports"
+mkdir -p "${LAB_DIR}/codespaces/logs"
 
 echo ""
 echo "==> Setup complete!"
 echo ""
-echo "Next steps:"
+echo "Next steps — full lab (16 GB+ RAM):"
 echo "  1. source ${VENV_DIR}/bin/activate"
 echo "  2. cd ${LAB_DIR}"
-echo "  3. sudo containerlab deploy -t containerlab/topology.yml"
+echo "  3. sudo containerlab deploy -t containerlab/topology.clab.yml"
+echo "  4. ansible-playbook playbooks/build.yml"
+echo "  5. ansible-playbook playbooks/deploy.yml"
+echo ""
+echo "Next steps — Codespaces / lightweight lab (4 cores, 16 GB RAM):"
+echo "  1. source ${VENV_DIR}/bin/activate"
+echo "  2. cd ${LAB_DIR}/codespaces"
+echo "  3. sudo containerlab deploy -t topology.clab.yml"
 echo "  4. ansible-playbook playbooks/build.yml"
 echo "  5. ansible-playbook playbooks/deploy.yml"

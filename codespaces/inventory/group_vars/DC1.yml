@@ -1,0 +1,39 @@
+---
+# Site-wide settings — same as the full lab
+local_users:
+  - name: admin
+    privilege: 15
+    role: network-admin
+    no_password: true
+
+  - name: ansible
+    privilege: 15
+    role: network-admin
+    sha512_password: "{{ ansible_password | password_hash('sha512') }}"
+
+mgmt_vrf_routing: true
+mgmt_gateway: 172.20.20.1
+mgmt_interface: Management0
+
+ntp:
+  local_interface:
+    name: Management0
+    vrf: MGMT
+  servers:
+    - name: time.cloudflare.com
+      vrf: MGMT
+      preferred: true
+
+ip_name_servers:
+  - ip_address: 8.8.8.8
+    vrf: MGMT
+
+timezone: UTC
+
+aaa_authentication:
+  login:
+    default: local
+
+aaa_authorization:
+  exec:
+    default: local

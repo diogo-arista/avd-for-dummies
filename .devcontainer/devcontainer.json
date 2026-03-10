@@ -1,0 +1,41 @@
+{
+  "name": "AVD Lab",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "none"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.vscode-yaml",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "wholroyd.jinja",
+        "srl-labs.vscode-containerlab"
+      ],
+      "settings": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.rulers": [120],
+        "[yaml]": {
+          "editor.defaultFormatter": "redhat.vscode-yaml"
+        },
+        "yaml.schemas": {
+          "https://avd.arista.com/schema/avd.json": [
+            "inventory/group_vars/**/*.yml",
+            "codespaces/inventory/group_vars/**/*.yml"
+          ]
+        }
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}

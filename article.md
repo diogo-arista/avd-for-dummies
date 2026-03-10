@@ -97,12 +97,14 @@ This is the most common data center design and the one AVD handles best.
 
 ## Part 2: Setting Up the Lab Environment
 
+> **Two lab options are available.** This part covers the **full lab** (2 spines, 4 leaves, MLAG). If you are running on GitHub Codespaces or a machine with limited resources, skip to **Part 5: Codespaces Lab**, which uses a smaller topology (1 spine, 2 standalone leaves, 2 Linux hosts) designed to run within 4 cores and 16 GB of RAM.
+
 ### 2.1 Prerequisites
 
 #### Hardware / VM requirements
 
 You need a Linux or macOS machine (or a Linux VM) with:
-- At least **8 GB RAM** (16 GB recommended)
+- At least **16 GB RAM** (8 GB is the absolute minimum, expect slowness)
 - **20 GB free disk space**
 - Internet access to pull images and packages
 
@@ -186,11 +188,11 @@ containerlab version
 Arista cEOS images require a free account at [arista.com](https://www.arista.com).
 
 1. Go to **Software Downloads → EOS → cEOS-lab**
-2. Download `cEOS-lab-4.32.0F.tar.xz` (or the latest 4.32.x release)
-3. Import it into Docker:
+2. Download `cEOS-lab-4.35.0F.tar.xz` (or the latest 4.35.x release)
+3. Import it into Docker, tagging it as `ceos:latest` so the topology files work without changes:
 
 ```bash
-docker import cEOS-lab-4.32.0F.tar.xz arista/ceos:4.32.0F
+docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
 ```
 
 4. Verify:
@@ -232,7 +234,7 @@ Or create the directory structure manually:
 ```
 avd-lab/
 ├── containerlab/
-│   └── topology.yml
+│   └── topology.clab.yml
 ├── inventory/
 │   ├── hosts.yml
 │   └── group_vars/
@@ -252,13 +254,131 @@ avd-lab/
 
 ---
 
-### 2.3 Start the Lab
+### 2.3 VS Code Setup and the Containerlab Extension
+
+Working with AVD in VS Code is the recommended workflow. Two extensions make it significantly better.
+
+#### Install the extensions
+
+Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`) and install:
+
+| Extension | Publisher | Purpose |
+|-----------|-----------|---------|
+| **YAML** | Red Hat | Schema validation and auto-complete for AVD `group_vars` files |
+| **containerlab** | SRL Labs | Deploy, inspect, and connect to nodes directly from VS Code |
+| **Jinja** | wholroyd | Syntax highlighting for AVD Jinja2 templates |
+| **Python** | Microsoft | Required if you edit any Python scripts |
+
+Or install them all from the terminal:
+
+```bash
+code --install-extension redhat.vscode-yaml
+code --install-extension srl-labs.vscode-containerlab
+code --install-extension wholroyd.jinja
+code --install-extension ms-python.python
+```
+
+#### The containerlab extension
+
+The extension detects any file ending in `.clab.yml` or `.clab.yaml` as a containerlab topology. This is why the topology files in this lab use the `.clab.yml` suffix — without it, the extension will not recognise them.
+
+Once a topology file is open, the extension provides:
+
+- **Sidebar panel** — lists all running labs with their node status
+- **Right-click menu on the topology file** — deploy, destroy, redeploy, inspect
+- **Right-click menu on a node** — open a shell directly inside that node (no SSH needed)
+- **Graph view** — renders the topology as an interactive diagram
+
+**Typical workflow with the extension:**
+
+1. Open the repo in VS Code.
+2. Open `containerlab/topology.clab.yml` (or `codespaces/topology.clab.yml`).
+3. Right-click the file in the Explorer → **Deploy lab**.
+4. Watch the nodes appear in the containerlab sidebar panel.
+5. Right-click any node in the sidebar → **Open terminal** to get a shell inside that node.
+6. Edit `group_vars` files — the YAML extension shows AVD schema errors inline.
+7. Run Ansible playbooks from the VS Code terminal.
+8. Right-click the topology file → **Destroy lab** when done.
+
+> **Note:** Deploying and destroying labs requires `sudo` because containerlab creates network namespaces. The extension will prompt for your password if needed.
+
+#### YAML schema validation
+
+The YAML extension can validate your `group_vars` files against AVD's published JSON schema, which catches typos and wrong field names before you even run the build playbook. Add this to your VS Code `settings.json`:
+
+```json
+"yaml.schemas": {
+  "https://avd.arista.com/schema/avd.json": [
+    "inventory/group_vars/**/*.yml",
+    "codespaces/inventory/group_vars/**/*.yml"
+  ]
+}
+```
+
+This is already included in the `.devcontainer/devcontainer.json` for Codespaces users.
+
+---
+
+### 2.4 Dev Container Setup
+
+A **dev container** is a Docker container that defines a reproducible development environment. When you open a repository in VS Code (locally or on GitHub Codespaces), VS Code reads `.devcontainer/devcontainer.json` and offers to reopen the project inside that container — with all tools, extensions, and settings pre-configured.
+
+This repository includes a dev container that installs everything automatically:
+
+```
+.devcontainer/
+├── devcontainer.json   ← VS Code reads this to build the environment
+├── Dockerfile          ← defines the base image with pre-installed tools
+└── postCreate.sh       ← runs after the container starts (Ansible collections, dirs)
+```
+
+**What the Dockerfile installs (baked into the image):**
+- Python 3.11 + pip
+- containerlab binary
+- All Python packages from `requirements.txt` (Ansible, AVD Python library, etc.)
+
+**What `postCreate.sh` installs (runs at Codespace creation):**
+- Ansible Galaxy collections from `requirements.yml` — done at runtime so collection versions are always fresh
+- Output directories (`intended/`, `documentation/`, `reports/`, `logs/`)
+
+**VS Code extensions installed automatically:**
+- `redhat.vscode-yaml` — YAML validation
+- `srl-labs.vscode-containerlab` — containerlab management
+- `ms-python.python` — Python support
+- `wholroyd.jinja` — Jinja2 highlighting
+
+**What you still need to provide manually:**
+The cEOS image cannot be bundled in the dev container because it requires an Arista account to download. After the container starts, upload the image and import it:
+
+```bash
+docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
+```
+
+#### Using the dev container locally
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the [Dev Containers VS Code extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+2. Open the repo in VS Code.
+3. When prompted, click **Reopen in Container** (or open the Command Palette → **Dev Containers: Reopen in Container**).
+4. VS Code builds the image (first time only, ~3 minutes), then reopens inside it.
+5. The terminal inside VS Code is already inside the container with all tools available.
+
+#### Using the dev container on GitHub Codespaces
+
+1. Push the repo to GitHub.
+2. Click **Code → Codespaces → Create codespace on main**.
+3. GitHub builds the image using the Dockerfile (this is cached by Codespaces' prebuild feature if enabled).
+4. The `postCreate.sh` script runs automatically.
+5. Import the cEOS image when prompted.
+
+---
+
+### 2.5 Start the Lab
 
 #### Step 1 — Deploy the containerlab topology
 
 ```bash
 cd ~/avd-lab/lab/containerlab
-sudo containerlab deploy -t topology.yml
+sudo containerlab deploy -t topology.clab.yml
 ```
 
 This will pull the cEOS image and start the containers. The first run may take a few minutes.
@@ -266,7 +386,7 @@ This will pull the cEOS image and start the containers. The first run may take a
 Verify that all nodes are running:
 
 ```bash
-sudo containerlab inspect -t topology.yml
+sudo containerlab inspect -t topology.clab.yml
 ```
 
 You should see output like:
@@ -275,12 +395,12 @@ You should see output like:
 +---+------------------+--------------+------------------------+---------+
 | # |       Name       | Container ID |          Image         |  State  |
 +---+------------------+--------------+------------------------+---------+
-| 1 | clab-avd-spine1  | a1b2c3d4e5f6 | arista/ceos:4.32.0F    | running |
-| 2 | clab-avd-spine2  | b2c3d4e5f6a1 | arista/ceos:4.32.0F    | running |
-| 3 | clab-avd-leaf1   | c3d4e5f6a1b2 | arista/ceos:4.32.0F    | running |
-| 4 | clab-avd-leaf2   | d4e5f6a1b2c3 | arista/ceos:4.32.0F    | running |
-| 5 | clab-avd-leaf3   | e5f6a1b2c3d4 | arista/ceos:4.32.0F    | running |
-| 6 | clab-avd-leaf4   | f6a1b2c3d4e5 | arista/ceos:4.32.0F    | running |
+| 1 | clab-avd-spine1  | a1b2c3d4e5f6 | ceos:latest            | running |
+| 2 | clab-avd-spine2  | b2c3d4e5f6a1 | ceos:latest            | running |
+| 3 | clab-avd-leaf1   | c3d4e5f6a1b2 | ceos:latest            | running |
+| 4 | clab-avd-leaf2   | d4e5f6a1b2c3 | ceos:latest            | running |
+| 5 | clab-avd-leaf3   | e5f6a1b2c3d4 | ceos:latest            | running |
+| 6 | clab-avd-leaf4   | f6a1b2c3d4e5 | ceos:latest            | running |
 +---+------------------+--------------+------------------------+---------+
 ```
 
@@ -704,7 +824,7 @@ Work through these exercises in order. Each builds on the previous one.
 
 2. Notice that EOS has a default configuration from the containerlab startup-config. There are no fabric-level BGP sessions yet — only management is configured.
 
-3. Open `containerlab/topology.yml` and find:
+3. Open `containerlab/topology.clab.yml` and find:
    - Which interfaces connect spine1 to leaf1?
    - What management IP is assigned to leaf3?
 
@@ -835,11 +955,11 @@ Work through these exercises in order. Each builds on the previous one.
 
 **Tasks:**
 
-1. Open `containerlab/topology.yml` and add the two new nodes and their links to both spines.
+1. Open `containerlab/topology.clab.yml` and add the two new nodes and their links to both spines.
 
 2. Redeploy the topology:
    ```bash
-   sudo containerlab deploy -t containerlab/topology.yml --reconfigure
+   sudo containerlab deploy -t containerlab/topology.clab.yml --reconfigure
    ```
 
 3. Add the new nodes to `inventory/hosts.yml` under a new group `DC1_LEAF5_6`.
@@ -897,13 +1017,389 @@ Work through these exercises in order. Each builds on the previous one.
 
 ---
 
-## Part 5: Troubleshooting Common Issues
+## Part 5: Codespaces Lab (Lightweight)
+
+This section is a self-contained alternative to the full lab in Parts 2–4. Use it when you are working in **GitHub Codespaces** or on any machine with limited resources. Everything is in the `codespaces/` directory of the repository.
+
+**What is the same:** the AVD workflow (build → deploy → validate), the YAML structure, the same Ansible roles, the same concepts.
+
+**What is different:** the topology is smaller (1 spine, 2 standalone leaves, no MLAG) and two Linux hosts are included so you can test end-to-end connectivity across the VXLAN fabric.
+
+---
+
+### 5.1 Topology
+
+```
+                 ┌─────────────────────────┐
+                 │      Management Net      │
+                 │     172.20.20.0/24       │
+                 └──┬───────┬───────┬───┬──┘
+                    │       │       │   │
+                 [spine1] [leaf1] [leaf2] ...
+                 .11      .13     .15
+                              │       │
+                           [host1] [host2]
+                           .31     .32
+
+Underlay links:
+  spine1:eth1 ── leaf1:eth1
+  spine1:eth2 ── leaf2:eth1
+
+Host links (access, VLAN 10):
+  leaf1:eth3 ── host1:eth1
+  leaf2:eth3 ── host2:eth1
+```
+
+**Key design differences from the full lab:**
+
+| Full lab | Codespaces lab |
+|----------|---------------|
+| 2 spines | 1 spine |
+| 4 leaves in 2 MLAG pairs | 2 standalone leaves (no MLAG) |
+| No hosts | 2 Linux hosts for ping tests |
+| ~12 GB RAM | ~5 GB RAM |
+
+Because there is no MLAG, the AVD `DC1_FABRIC.yml` has one node per `node_group` and no MLAG-related pool variables. Each leaf has its own unique VTEP loopback address.
+
+---
+
+### 5.2 Setting Up the Codespaces Environment
+
+The repo includes a dev container (see section 2.4) that automates everything except the cEOS image import.
+
+#### Option A — GitHub Codespaces (recommended for beginners)
+
+1. Push the repo to GitHub (or fork it).
+2. Click **Code → Codespaces → Create codespace on main**.
+3. GitHub builds the dev container image using `.devcontainer/Dockerfile` — this takes about 3 minutes on first creation. Subsequent Codespaces reuse the cached image and are ready in under 30 seconds.
+4. The `postCreate.sh` script runs automatically in the background. Watch it in the terminal — it installs Ansible collections and creates output directories.
+5. Upload the cEOS image. Drag `cEOS-lab-4.35.0F.tar.xz` into the VS Code terminal, or use the Explorer upload option:
+   ```bash
+   docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
+   ```
+6. Verify everything is ready:
+   ```bash
+   docker images | grep ceos      # should show ceos:latest
+   containerlab version           # should print the installed version
+   ansible --version              # should print ansible-core 2.15+
+   ```
+
+#### Option B — Local Linux machine (low spec)
+
+Run the standard setup script, then work from the `codespaces/` directory:
+
+```bash
+bash setup.sh
+source ~/avd-lab/venv/bin/activate
+cd codespaces
+```
+
+---
+
+### 5.3 Start the Codespaces Lab
+
+```bash
+cd codespaces
+sudo containerlab deploy -t topology.clab.yml
+```
+
+Verify all five containers are running:
+
+```bash
+sudo containerlab inspect -t topology.clab.yml
+```
+
+Expected output:
+
+```
++---+---------------------+--------------+----------------------------------+---------+
+| # |        Name         | Container ID |              Image               |  State  |
++---+---------------------+--------------+----------------------------------+---------+
+| 1 | clab-avd-cs-host1   | ...          | ghcr.io/hellt/network-multitool  | running |
+| 2 | clab-avd-cs-host2   | ...          | ghcr.io/hellt/network-multitool  | running |
+| 3 | clab-avd-cs-leaf1   | ...          | ceos:latest                      | running |
+| 4 | clab-avd-cs-leaf2   | ...          | ceos:latest                      | running |
+| 5 | clab-avd-cs-spine1  | ...          | ceos:latest                      | running |
++---+---------------------+--------------+----------------------------------+---------+
+```
+
+SSH into spine1 to confirm EOS is up:
+
+```bash
+ssh admin@172.20.20.11
+spine1> show version
+spine1> exit
+```
+
+---
+
+### 5.4 Codespaces Exercises
+
+Work through these in order. Run all Ansible commands from inside the `codespaces/` directory.
+
+---
+
+#### Exercise CS-1: Explore the Topology
+
+**Goal:** Understand the physical connections before any automation runs.
+
+**Tasks:**
+
+1. SSH into `spine1`:
+   ```bash
+   ssh admin@172.20.20.11
+   ```
+
+2. Run these commands and note that no BGP sessions exist yet — only the management interface is configured:
+   ```
+   show lldp neighbors
+   show ip interface brief
+   show bgp summary
+   ```
+   LLDP should show leaf1 and leaf2 as neighbours. BGP will show no peers.
+
+3. Open `codespaces/topology.clab.yml`. Answer:
+   - Which spine interface connects to leaf1?
+   - Which spine interface connects to leaf2?
+   - Which leaf interface connects to host1?
+
+4. Open `codespaces/inventory/group_vars/DC1_FABRIC.yml`. Compare the `l3leaf` section with the full lab version in `inventory/group_vars/DC1_FABRIC.yml`. What is missing? What is simpler?
+
+**Expected result:** You can reach all three EOS nodes, you understand the topology, and you can explain why the codespaces `DC1_FABRIC.yml` has no MLAG-related settings.
+
+---
+
+#### Exercise CS-2: Build Configurations with AVD
+
+**Goal:** Generate EOS configuration files from YAML.
+
+**Tasks:**
+
+1. From inside the `codespaces/` directory, run the build:
+   ```bash
+   ansible-playbook playbooks/build.yml
+   ```
+
+2. Inspect the generated files:
+   ```bash
+   ls intended/configs/
+   cat intended/configs/spine1.cfg
+   cat intended/configs/leaf1.cfg
+   ```
+
+3. Answer these questions by reading the generated configs:
+   - What Loopback0 address was assigned to leaf1? To leaf2?
+   - What VNI is used for VLAN 10?
+   - Find the `interface Vxlan1` section in `leaf1.cfg`. What is the source interface for the VXLAN tunnel?
+   - How many BGP peers does spine1 have?
+
+4. Open `intended/structured_configs/leaf1.yml`. This is the intermediate YAML before Jinja2 rendering. Find the `bgp_as` field and the `vlans` list.
+
+**Expected result:** Three `.cfg` files in `intended/configs/` and matching documentation in `documentation/`.
+
+---
+
+#### Exercise CS-3: Deploy Configurations
+
+**Goal:** Push the generated configurations to the running cEOS containers.
+
+**Tasks:**
+
+1. Deploy:
+   ```bash
+   ansible-playbook playbooks/deploy.yml
+   ```
+
+2. SSH into `spine1` and verify the BGP underlay is up:
+   ```
+   show bgp summary
+   show ip route
+   ```
+   You should see two eBGP peers (one per leaf) in the `Established` state.
+
+3. SSH into `leaf1` and check the EVPN overlay:
+   ```
+   show bgp evpn summary
+   show interface vxlan1
+   show vxlan vtep
+   ```
+   You should see spine1 as the EVPN peer and leaf2's VTEP address in the VTEP table.
+
+4. Check that the tenant VRF and SVIs were created:
+   ```
+   show vrf
+   show ip interface brief vrf PROD
+   ```
+
+**Expected result:** eBGP underlay is up between spine1 and both leaves. EVPN overlay is up. VRF PROD and SVIs for VLAN 10 and VLAN 20 are present on both leaves.
+
+---
+
+#### Exercise CS-4: Test Host Connectivity
+
+**Goal:** Verify end-to-end data-plane connectivity across the VXLAN fabric using the Linux hosts.
+
+**Tasks:**
+
+1. Open a shell on **host1** by exec-ing into its container:
+   ```bash
+   docker exec -it clab-avd-cs-host1 bash
+   ```
+
+2. Configure host1 with an IP in VLAN 10:
+   ```bash
+   ip addr add 10.1.10.101/24 dev eth1
+   ip route add default via 10.1.10.1
+   ```
+
+3. Open a second terminal and do the same for **host2**:
+   ```bash
+   docker exec -it clab-avd-cs-host2 bash
+   ip addr add 10.1.10.102/24 dev eth1
+   ip route add default via 10.1.10.1
+   ```
+
+4. From host1, ping host2:
+   ```bash
+   ping 10.1.10.102
+   ```
+   This traffic travels: host1 → leaf1 (VXLAN encapsulation) → spine1 → leaf2 (VXLAN decapsulation) → host2.
+
+5. From host1, ping the anycast gateway:
+   ```bash
+   ping 10.1.10.1
+   ```
+
+6. On leaf1, check what MAC address was learned for host1:
+   ```
+   show mac address-table
+   show bgp evpn route-type mac-ip
+   ```
+
+**Expected result:** Pings succeed between host1 and host2 across the VXLAN fabric.
+
+> **Note:** The host IP configuration is not persistent. If you restart the containers, you will need to re-apply the `ip addr` and `ip route` commands.
+
+---
+
+#### Exercise CS-5: Add a New VLAN
+
+**Goal:** Practice the day-2 AVD workflow — a change via YAML only, no CLI.
+
+**Scenario:** A new team needs a `Dev-Servers` network isolated from the production VRF.
+
+**Tasks:**
+
+1. Open `codespaces/inventory/group_vars/DC1_TENANTS_NETWORKS.yml`.
+
+2. Add a new VRF after the `PROD` VRF:
+   ```yaml
+   - name: DEV
+     vrf_vni: 2
+     vtep_diagnostic:
+       loopback: 101
+       loopback_ip_range: 10.255.2.0/24
+     svis:
+       - id: 100
+         name: Dev-Servers
+         tags: [prod]
+         enabled: true
+         ip_address_virtual: 10.2.100.1/24
+   ```
+
+   > Note: the tag is `prod` here because the leaf filter uses `tags: [prod]`. The tag controls which leaves carry the network, not which VRF it belongs to.
+
+3. Rebuild and redeploy:
+   ```bash
+   ansible-playbook playbooks/build.yml
+   ansible-playbook playbooks/deploy.yml
+   ```
+
+4. Verify on leaf1:
+   ```
+   show vrf
+   show vlan 100
+   show interface vlan100
+   ```
+
+5. Compare the new `intended/configs/leaf1.cfg` against the previous version. Which lines were added?
+
+**Expected result:** VRF DEV and SVI `10.2.100.1/24` appear on both leaves.
+
+---
+
+#### Exercise CS-6: Validate the Network State
+
+**Goal:** Use AVD's validation role to confirm the fabric matches its intended state.
+
+**Tasks:**
+
+1. Run the validation:
+   ```bash
+   ansible-playbook playbooks/validate.yml
+   ```
+
+2. Read the report in `reports/`.
+
+3. **Introduce a fault:** SSH into `spine1` and shut down the interface towards `leaf1`:
+   ```
+   configure
+   interface Ethernet1
+     shutdown
+   end
+   ```
+
+4. Run the validation again:
+   ```bash
+   ansible-playbook playbooks/validate.yml
+   ```
+   Observe which checks fail: the BGP session from spine1 to leaf1 will be down, and any EVPN routes that depend on leaf1's VTEP will be missing.
+
+5. From host2, try to ping host1 while the interface is down:
+   ```bash
+   ping 10.1.10.101
+   ```
+
+6. Restore the interface and re-validate:
+   ```
+   configure
+   interface Ethernet1
+     no shutdown
+   end
+   ```
+
+**Expected result:** You can observe validation failures caused by a real network fault, and watch the validation pass again after recovery.
+
+---
+
+### 5.5 Differences Between the Two Labs
+
+Understanding why the two labs are configured differently is itself a useful learning exercise.
+
+**No MLAG in the Codespaces lab:**
+
+MLAG requires two leaves per pair plus a dedicated peer-link (two extra interfaces). Without MLAG, each leaf is independent. The trade-offs are:
+
+- With MLAG: higher availability (active-active uplinks from servers, no single point of failure per leaf), more complexity, more memory.
+- Without MLAG: simpler config, fewer containers, appropriate for a lab where you are learning the AVD workflow rather than HA design.
+
+**Single spine:**
+
+One spine is enough to demonstrate eBGP underlay and EVPN overlay. A second spine would add redundancy but doubles the cEOS memory footprint with no extra learning value at this stage.
+
+**Linux hosts:**
+
+The full lab omits hosts because the focus is on the fabric itself. The Codespaces lab includes them specifically so you can run ping tests and see traffic flow through the VXLAN tunnel — making the overlay real rather than abstract.
+
+---
+
+## Part 6: Troubleshooting Common Issues
 
 ### containerlab won't start
 
 - Check that Docker is running: `docker info`
 - Check for port conflicts: `sudo netstat -tulpn | grep 22`
-- Run with `--debug` flag: `sudo containerlab deploy -t topology.yml --debug`
+- Run with `--debug` flag: `sudo containerlab deploy -t topology.clab.yml --debug`
 
 ### Ansible can't connect to devices
 

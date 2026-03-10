@@ -1,0 +1,14 @@
+---
+# Deploy — Codespaces lab
+# Run: ansible-playbook playbooks/deploy.yml
+
+- name: Deploy EOS configurations to devices
+  hosts: DC1_FABRIC
+  gather_facts: false
+
+  tasks:
+    - name: Deploy configurations via eAPI (config replace)
+      import_role:
+        name: arista.avd.eos_config_deploy_eapi
+      vars:
+        config_replace: true

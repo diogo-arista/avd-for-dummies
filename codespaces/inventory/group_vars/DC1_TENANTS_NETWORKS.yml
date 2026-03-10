@@ -1,0 +1,38 @@
+---
+# Overlay networks — Codespaces edition
+#
+# Kept deliberately simple:
+#   - 1 tenant (ACME)
+#   - 1 VRF (PROD)
+#   - 2 SVIs: VLAN 10 (App-Tier) and VLAN 20 (DB-Tier)
+#
+# host1 and host2 will be configured in VLAN 10 for connectivity testing.
+# VLAN 20 is included so you can practise adding/removing networks in Exercise 5.
+
+tenants:
+  - name: ACME
+    mac_vrf_vni_base: 10000   # VNI = base + vlan_id  →  VLAN 10 = VNI 10010
+
+    vrfs:
+      - name: PROD
+        vrf_vni: 1
+        vtep_diagnostic:
+          loopback: 100
+          loopback_ip_range: 10.255.1.0/24
+
+        svis:
+          # VLAN 10 — App-Tier
+          # host1 and host2 will use this subnet (10.1.10.101 and .102)
+          - id: 10
+            name: App-Tier
+            tags: [prod]
+            enabled: true
+            ip_address_virtual: 10.1.10.1/24   # anycast gateway on all leaves
+
+          # VLAN 20 — DB-Tier
+          # Not used by hosts in the lab, but useful for Exercise 5
+          - id: 20
+            name: DB-Tier
+            tags: [prod]
+            enabled: true
+            ip_address_virtual: 10.1.20.1/24

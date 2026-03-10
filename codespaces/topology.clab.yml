@@ -1,0 +1,72 @@
+---
+# Arista AVD Lab — Codespaces / lightweight topology
+# Fabric: 1-Spine / 2-Leaf (standalone, no MLAG) + 2 Linux hosts
+# Optimised for: GitHub Codespaces (4 cores, 16 GB RAM, 32 GB storage)
+#
+# Resource estimates per container:
+#   cEOS node : ~1.5 GB RAM, ~3 GB disk
+#   Linux host: ~50 MB RAM, ~200 MB disk
+# Total: ~5 GB RAM — well within the 16 GB limit.
+
+name: avd-cs
+
+mgmt:
+  network: mgmt-cs
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  defaults:
+    kind: arista_ceos
+    image: ceos:latest
+    startup-config: ../containerlab/startup-config.cfg
+
+  nodes:
+    # ─── SPINE ─────────────────────────────────────────────────────────────────
+    spine1:
+      mgmt-ipv4: 172.20.20.11
+      cpu: 1
+      cpu-set: 0-1
+      env:
+        INTFTYPE: et
+
+    # ─── LEAVES (standalone — no MLAG in this lab) ─────────────────────────────
+    leaf1:
+      mgmt-ipv4: 172.20.20.13
+      cpu: 1
+      cpu-set: 0-1
+      env:
+        INTFTYPE: et
+
+    leaf2:
+      mgmt-ipv4: 172.20.20.15
+      cpu: 1
+      cpu-set: 2-3
+      env:
+        INTFTYPE: et
+
+    # ─── LINUX HOSTS ───────────────────────────────────────────────────────────
+    # network-multitool includes ping, traceroute, curl, iperf, etc.
+    host1:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      cpu: 1
+      cpu-set: 2-3
+      mgmt-ipv4: 172.20.20.31
+
+    host2:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.20.32
+
+  links:
+    # ─── SPINE DOWNLINKS ───────────────────────────────────────────────────────
+    # spine1 Ethernet1 -> leaf1 Ethernet1
+    - endpoints: ["spine1:eth1", "leaf1:eth1"]
+    # spine1 Ethernet2 -> leaf2 Ethernet1
+    - endpoints: ["spine1:eth2", "leaf2:eth1"]
+
+    # ─── HOST UPLINKS ──────────────────────────────────────────────────────────
+    # host1 connects to leaf1 Ethernet3 (access port, VLAN 10)
+    - endpoints: ["leaf1:eth3", "host1:eth1"]
+    # host2 connects to leaf2 Ethernet3 (access port, VLAN 10)
+    - endpoints: ["leaf2:eth3", "host2:eth1"]

@@ -1,0 +1,15 @@
+---
+# Validate — Codespaces lab
+# Run: ansible-playbook playbooks/validate.yml
+
+- name: Validate network state against intended design
+  hosts: DC1_FABRIC_VALIDATION
+  gather_facts: false
+
+  tasks:
+    - name: Validate EOS state
+      import_role:
+        name: arista.avd.eos_validate_state
+      vars:
+        save_catalog: true
+        halt_on_failure: false

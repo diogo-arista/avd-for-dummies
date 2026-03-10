@@ -1,0 +1,83 @@
+---
+# DC1_FABRIC — Codespaces edition
+#
+# Simplified compared to the full lab:
+#   - 1 spine instead of 2
+#   - 2 standalone leaves (no MLAG pairs)
+#   - Fewer IP pools needed (no mlag_peer pools)
+#
+# The core concepts are identical: eBGP underlay, EVPN VXLAN overlay,
+# loopback-based VTEP addresses, anycast gateway.
+
+fabric_name: DC1_FABRIC
+
+underlay_routing_protocol: ebgp
+overlay_routing_protocol: ebgp
+
+bgp_peer_groups:
+  ipv4_underlay_peers:
+    name: IPv4-UNDERLAY-PEERS
+    password: "AQQvKeimxJu+uGQ/yYvv9w=="
+  evpn_overlay_peers:
+    name: EVPN-OVERLAY-PEERS
+    password: "q+VNViP5i4rVjW1cxFv2wA=="
+
+# ── IP address pools ──────────────────────────────────────────────────────────
+loopback_ipv4_pool: 192.168.255.0/24
+vtep_loopback_ipv4_pool: 192.168.254.0/24
+underlay_p2p_network_summary: 192.168.0.0/22
+
+# ── Spine ─────────────────────────────────────────────────────────────────────
+spine:
+  defaults:
+    platform: cEOS-lab
+    bgp_as: 65001
+    loopback_ipv4_pool: 192.168.255.0/24
+
+  nodes:
+    - name: spine1
+      id: 1
+      mgmt_ip: 172.20.20.11/24
+
+# ── L3 Leaves (standalone — one node per node_group) ─────────────────────────
+#
+# Key differences from the full lab:
+#   - No mlag_interfaces (no peer-link needed)
+#   - No mlag_peer_ipv4_pool / mlag_peer_l3_ipv4_pool
+#   - Each leaf has its own VTEP loopback (no shared VTEP with a partner)
+#   - spanning_tree_mode: mstp (safe default; none would also work here)
+#   - uplink_switches points only to spine1 (single uplink)
+#
+l3leaf:
+  defaults:
+    platform: cEOS-lab
+    loopback_ipv4_pool: 192.168.255.0/24
+    loopback_ipv4_offset: 2          # leaf1 → .3, leaf2 → .4
+    vtep_loopback_ipv4_pool: 192.168.254.0/24
+    uplink_interfaces: [Ethernet1]   # single uplink per leaf
+    uplink_switches: [spine1]
+    spanning_tree_mode: mstp
+    spanning_tree_priority: 4096
+    virtual_router_mac_address: 00:1c:73:00:dc:01
+    filter:
+      tenants: [ACME]
+      tags: [prod]
+
+  node_groups:
+    # ── Leaf 1 — standalone ───────────────────────────────────────────────────
+    - group: DC1_LEAF1
+      bgp_as: 65101
+      nodes:
+        - name: leaf1
+          id: 1
+          mgmt_ip: 172.20.20.13/24
+          uplink_switch_interfaces: [Ethernet1]   # spine1 Ethernet1
+
+    # ── Leaf 2 — standalone ───────────────────────────────────────────────────
+    - group: DC1_LEAF2
+      bgp_as: 65102
+      nodes:
+        - name: leaf2
+          id: 2
+          mgmt_ip: 172.20.20.15/24
+          uplink_switch_interfaces: [Ethernet2]   # spine1 Ethernet2
