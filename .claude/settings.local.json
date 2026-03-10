@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(chmod +x /Users/diogo/projects/avd-for-dummies/setup.sh)"
-    ]
-  }
-}
