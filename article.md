@@ -99,14 +99,75 @@ This is the most common data center design and the one AVD handles best.
 
 ### 2.1 Prerequisites
 
+#### Hardware / VM requirements
+
 You need a Linux or macOS machine (or a Linux VM) with:
 - At least **8 GB RAM** (16 GB recommended)
 - **20 GB free disk space**
-- **Docker** installed and running
-- Python 3.10 or newer
 - Internet access to pull images and packages
 
 > **Note for macOS users:** containerlab requires a Linux kernel. You need Docker Desktop with a Linux VM backend, or you can use a Lima/Multipass VM. The cEOS image works fine.
+
+#### Install system packages (Linux)
+
+On a fresh Linux install (Ubuntu/Debian), several tools are not present by default. Install everything you need before proceeding:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    git \
+    ssh
+```
+
+> **Note:** On Ubuntu 22.04 and later the `python3-venv` package is separate from `python3`. If you skip it, the `python3 -m venv` command will fail with *"ensurepip is not available"*. Always install it explicitly.
+
+If you need a specific Python version (3.11 is a safe choice):
+
+```bash
+sudo apt-get install -y python3.11 python3.11-venv python3.11-pip
+```
+
+Then use `python3.11` instead of `python3` in all subsequent commands.
+
+On **RHEL / Rocky / AlmaLinux**:
+
+```bash
+sudo dnf install -y python3 python3-pip curl git openssh-clients
+# venv is included in the python3 package on RHEL-based systems
+```
+
+#### Install Docker
+
+containerlab uses Docker to run cEOS containers. Install it using the official convenience script:
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+```
+
+Add your user to the `docker` group so you can run Docker commands without `sudo`:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker          # Apply group change in the current shell
+docker info            # Verify Docker is running
+```
+
+> If `docker info` returns a permission error, log out and back in for the group change to take full effect.
+
+#### Verify all system prerequisites
+
+Run these checks before moving on. All four must succeed:
+
+```bash
+python3 --version        # Should print Python 3.10 or newer
+python3 -m venv --help   # Should print venv usage (not an error)
+docker info              # Should print Docker system info
+curl --version           # Should print curl version
+```
 
 ### 2.2 Install Dependencies
 
