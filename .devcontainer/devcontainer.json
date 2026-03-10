@@ -1,10 +1,13 @@
 {
   "name": "AVD Lab",
 
-  // Debian 12 (bookworm) — required for docker-in-docker feature.
-  // Bullseye (Debian 11) has a stale Yarn GPG key that breaks the feature install.
-  // All tool installations happen in postCreate.sh (stable network, post-build).
-  "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
+  // Build from a minimal Dockerfile that pre-creates the clab_admins group.
+  // VS Code server starts with process-level groups fixed at launch; usermod
+  // in postCreate.sh runs too late for extension activation. The Dockerfile
+  // contains zero apt-get / network calls so it builds cleanly in Codespaces.
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
 
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {

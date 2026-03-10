@@ -18,6 +18,11 @@ echo ""
 # ── 1. containerlab ───────────────────────────────────────────────────────────
 echo "==> Installing containerlab..."
 bash -c "$(curl -sL https://get.containerlab.dev)"
+
+# Allow the vscode user to run containerlab without sudo and activate the
+# VS Code extension (which checks for clab_admins and docker group membership).
+sudo groupadd -r clab_admins 2>/dev/null || true
+sudo usermod -aG clab_admins,docker vscode
 echo "    Done."
 echo ""
 
@@ -69,7 +74,7 @@ echo "============================================================"
 echo ""
 echo "==> Quick start (Codespaces lab):"
 echo "      cd codespaces"
-echo "      sudo containerlab deploy -t topology.clab.yml"
+echo "      containerlab deploy -t topology.clab.yml"
 echo "      ansible-playbook playbooks/build.yml"
 echo "      ansible-playbook playbooks/deploy.yml"
 echo ""

@@ -334,7 +334,7 @@ This repository includes a dev container that installs everything automatically:
 > **Why no Dockerfile?** Codespaces restricts network access during the Docker image build phase, which causes `apt-get`, `curl`, and `pip` to fail unpredictably. Using a pre-built Microsoft base image avoids that problem entirely — all tool installations happen in `postCreate.sh`, which runs after the container is up with stable network access.
 
 **What `devcontainer.json` configures:**
-- Base image: `mcr.microsoft.com/devcontainers/python:3.11-bullseye` (Python 3.11 pre-installed)
+- Base image: `mcr.microsoft.com/devcontainers/python:3.11-bookworm` (Python 3.11, Debian 12)
 - Feature: Docker-in-Docker (required for containerlab to create containers)
 - VS Code extensions (auto-installed when the Codespace opens)
 
@@ -357,13 +357,63 @@ The cEOS image cannot be bundled because it requires an Arista account to downlo
 docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
 ```
 
-#### Using the dev container locally
+#### Using the dev container locally on macOS
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the [Dev Containers VS Code extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
-2. Open the repo in VS Code.
-3. When prompted, click **Reopen in Container** (or open the Command Palette → **Dev Containers: Reopen in Container**).
-4. VS Code pulls the base image and runs `postCreate.sh` — this takes 3–5 minutes on first run.
-5. The terminal inside VS Code is inside the container with all tools ready.
+Running the dev container on macOS with Docker Desktop gives you the same pre-configured environment as Codespaces, without needing a GitHub account or internet connection after setup.
+
+**Prerequisites**
+
+| Tool | Where to get it |
+|------|----------------|
+| Docker Desktop for Mac | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
+| VS Code | [code.visualstudio.com](https://code.visualstudio.com/) |
+| Dev Containers extension | Install from VS Code: `ms-vscode-remote.remote-containers` |
+
+**Step 1 — Configure Docker Desktop resources**
+
+The lab requires enough memory inside the Docker VM. Open Docker Desktop → **Settings → Resources** and set:
+
+- **CPUs:** 4 or more
+- **Memory:** 8 GB minimum (16 GB recommended for the full lab)
+- **Disk image size:** 60 GB or more (cEOS images are ~1.5 GB each)
+
+Click **Apply & Restart**.
+
+> **Apple Silicon (M1/M2/M3):** Docker Desktop runs containers natively on arm64. cEOS 4.32+ ships a universal image that supports arm64. Older images require Rosetta emulation — enable it in Docker Desktop → **Settings → General → Use Rosetta for x86/amd64 emulation**.
+
+**Step 2 — Open the repo in the dev container**
+
+1. Clone the repository and open the folder in VS Code.
+2. VS Code detects `.devcontainer/devcontainer.json` and shows a notification in the bottom-right corner: **"Reopen in Container"** — click it.
+   - Alternatively: open the Command Palette (`⌘ Shift P`) → **Dev Containers: Reopen in Container**.
+3. VS Code pulls the base image and builds the container. On the first run this takes 3–5 minutes. Subsequent opens reuse the cached image and start in seconds.
+4. `postCreate.sh` runs automatically in the background and installs containerlab, Python packages, and Ansible collections. Watch progress in the **Terminal** panel.
+
+**Step 3 — Import the cEOS image**
+
+> **Important:** Because the dev container uses Docker-in-Docker, it runs its own Docker daemon — separate from the Docker Desktop daemon on your Mac. You must import the cEOS image from **inside the container terminal** (the terminal in VS Code), not from a Mac terminal.
+
+Open the VS Code terminal (the one running inside the container) and run:
+
+```bash
+docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
+docker images | grep ceos
+```
+
+If you run this from a native macOS terminal instead, the image goes into Docker Desktop's daemon and containerlab will not find it.
+
+**Step 4 — Deploy the lab**
+
+Once the image is imported, deploy the topology from inside the container terminal:
+
+```bash
+cd codespaces
+containerlab deploy -t topology.clab.yml
+```
+
+No `sudo` is required — `postCreate.sh` already added the `vscode` user to the `clab_admins` and `docker` groups.
+
+---
 
 #### Using the dev container on GitHub Codespaces
 
