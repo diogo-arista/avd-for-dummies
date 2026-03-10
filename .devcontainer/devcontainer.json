@@ -1,12 +1,10 @@
 {
   "name": "AVD Lab",
 
-  // Use the pre-built Microsoft Python image directly.
-  // Do NOT use a custom Dockerfile here: Codespaces restricts network access
-  // during the image build phase, which causes apt-get and curl to fail.
-  // All tool installations happen in postCreate.sh instead, which runs after
-  // the container is up with stable, unrestricted network access.
-  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+  // Debian 12 (bookworm) — required for docker-in-docker feature.
+  // Bullseye (Debian 11) has a stale Yarn GPG key that breaks the feature install.
+  // All tool installations happen in postCreate.sh (stable network, post-build).
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
 
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
