@@ -1,0 +1,8 @@
+---
+# Variables specific to the spine group
+# Most spine settings are already in DC1_FABRIC.yml under 'spine:'
+# This file is for any additional overrides.
+
+# Spines are route-reflectors for the EVPN overlay
+# AVD sets this automatically based on the group, but you can be explicit:
+evpn_role: server

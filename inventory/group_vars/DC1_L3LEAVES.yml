@@ -1,0 +1,14 @@
+---
+# Variables specific to all L3 leaf switches
+# Most leaf settings live in DC1_FABRIC.yml under 'l3leaf:'
+# This file handles overrides that apply to ALL leaves regardless of pair.
+
+# Leaves are EVPN clients (they peer to the spine route-reflectors)
+evpn_role: client
+
+# Enable BFD for BGP sessions to detect link failures faster
+bgp_defaults:
+  - no bgp default ipv4-unicast
+  - distance bgp 20 200 200
+  - graceful-restart restart-time 300
+  - graceful-restart

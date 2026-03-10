@@ -1,0 +1,30 @@
+---
+# Validate playbook
+#
+# This playbook connects to each device, collects operational state,
+# and checks that it matches the intended design.
+#
+# Checks include (but are not limited to):
+#   - BGP sessions are established (underlay + overlay)
+#   - MLAG is active and in sync
+#   - VXLAN VTEPs are learned
+#   - All expected interfaces are up
+#   - Routing table has expected prefixes
+#
+# Results are written to: reports/
+#
+# Run: ansible-playbook playbooks/validate.yml
+
+- name: Validate network state against intended design
+  hosts: DC1_FABRIC_VALIDATION
+  gather_facts: false
+
+  tasks:
+    - name: Validate EOS state
+      import_role:
+        name: arista.avd.eos_validate_state
+      vars:
+        # Save detailed results to a file
+        save_catalog: true
+        # Fail the playbook if any check fails (set false to see all results)
+        halt_on_failure: false

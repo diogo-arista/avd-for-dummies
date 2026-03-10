@@ -1,0 +1,16 @@
+---
+# Variables used by the eos_validate_state role
+# This group includes all fabric devices (spines + leaves)
+
+# Where to write the validation report
+eos_validate_state_dir: "{{ playbook_dir }}/../reports"
+
+# ANTA (Arista Network Test Automation) catalog settings
+# AVD uses ANTA under the hood for validation
+save_catalog: true
+
+# Custom test overrides — skip tests that don't apply to the lab
+# (comment these out once you understand the full test suite)
+eos_validate_state_filters:
+  # Skip NTP check if you don't have NTP configured in the lab
+  # - NTP

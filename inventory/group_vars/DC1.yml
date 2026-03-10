@@ -1,0 +1,47 @@
+---
+# Site-level variables for DC1
+# Applied to all devices in the DC1 group
+
+# Local users — AVD will render these into every device's config
+local_users:
+  - name: admin
+    privilege: 15
+    role: network-admin
+    no_password: true
+
+  - name: ansible
+    privilege: 15
+    role: network-admin
+    sha512_password: "{{ ansible_password | password_hash('sha512') }}"
+
+# Management VRF — keeps management traffic out of the data plane
+mgmt_vrf_routing: true
+mgmt_gateway: 172.20.20.1
+mgmt_interface: Management0
+
+# NTP server (use your local NTP or leave as public)
+ntp:
+  local_interface:
+    name: Management0
+    vrf: MGMT
+  servers:
+    - name: time.cloudflare.com
+      vrf: MGMT
+      preferred: true
+
+# DNS
+ip_name_servers:
+  - ip_address: 8.8.8.8
+    vrf: MGMT
+
+# Timezone
+timezone: UTC
+
+# AAA — simple local auth for the lab
+aaa_authentication:
+  login:
+    default: local
+
+aaa_authorization:
+  exec:
+    default: local

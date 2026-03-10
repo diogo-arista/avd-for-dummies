@@ -1,0 +1,82 @@
+---
+# DC1_TENANTS_NETWORKS — Overlay network definitions
+#
+# This file defines the logical networks (VRFs, VLANs, SVIs) that live
+# on top of the VXLAN fabric. Think of it as the "what servers see."
+#
+# Structure:
+#   tenants → vrfs → svis (L3 gateways)
+#                  → l2vlans (pure L2, no gateway)
+#
+# The 'tags' field controls which leaf groups carry each network.
+# Tags must match the 'filter.tags' list in DC1_FABRIC.yml.
+
+tenants:
+  - name: ACME
+    mac_vrf_vni_base: 10000   # Base VNI for MAC VRFs (VLAN VNI = base + vlan_id)
+
+    vrfs:
+      # ── Production VRF ──────────────────────────────────────────────────────
+      - name: PROD
+        vrf_vni: 1             # L3 VNI for this VRF
+        vtep_diagnostic:
+          loopback: 100        # Loopback interface used for VTEP diagnostics
+          loopback_ip_range: 10.255.1.0/24
+
+        svis:
+          # SVI 10 — App-Tier network
+          - id: 10
+            name: App-Tier
+            tags: [prod]
+            enabled: true
+            ip_address_virtual: 10.1.10.1/24  # Anycast gateway (same IP on all leaves)
+
+          # SVI 20 — DB-Tier network
+          - id: 20
+            name: DB-Tier
+            tags: [prod]
+            enabled: true
+            ip_address_virtual: 10.1.20.1/24
+
+          # SVI 30 — Infra services (DNS, NTP, AD)
+          - id: 30
+            name: Infra
+            tags: [prod]
+            enabled: true
+            ip_address_virtual: 10.1.30.1/24
+
+      # ── Development VRF ─────────────────────────────────────────────────────
+      - name: DEV
+        vrf_vni: 2
+        vtep_diagnostic:
+          loopback: 101
+          loopback_ip_range: 10.255.2.0/24
+
+        svis:
+          # SVI 100 — Dev servers
+          - id: 100
+            name: Dev-Servers
+            tags: [dev]
+            enabled: true
+            ip_address_virtual: 10.2.100.1/24
+
+          # SVI 101 — Dev-Infra
+          - id: 101
+            name: Dev-Infra
+            tags: [dev]
+            enabled: true
+            ip_address_virtual: 10.2.101.1/24
+
+    # ── Pure L2 VLANs (no SVI, no IP gateway on the fabric) ──────────────────
+    l2vlans:
+      # VLAN 200 — Storage traffic (trunked to servers, no routing needed)
+      - id: 200
+        name: Storage
+        tags: [prod]
+        vni: 10200
+
+      # VLAN 201 — Storage replication
+      - id: 201
+        name: Storage-Replication
+        tags: [prod]
+        vni: 10201

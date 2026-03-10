@@ -1,0 +1,28 @@
+---
+# Build playbook
+#
+# This playbook does NOT connect to any devices.
+# It reads your YAML variables and generates:
+#   - intended/configs/<device>.cfg   — EOS configurations
+#   - intended/structured_configs/    — intermediate YAML (useful for debugging)
+#   - documentation/                  — Markdown topology docs
+#
+# Run: ansible-playbook playbooks/build.yml
+
+- name: Build EOS configurations from AVD data models
+  hosts: DC1_FABRIC
+  gather_facts: false
+  connection: local    # No device connection needed — this is pure generation
+
+  tasks:
+    # Step 1: Convert high-level design (DC1_FABRIC.yml, tenants, etc.)
+    # into structured EOS config data.
+    - name: Generate structured EOS configuration
+      import_role:
+        name: arista.avd.eos_designs
+
+    # Step 2: Render the structured data into actual EOS CLI config files
+    # and generate Markdown documentation.
+    - name: Generate EOS configuration files and documentation
+      import_role:
+        name: arista.avd.eos_cli_config_gen

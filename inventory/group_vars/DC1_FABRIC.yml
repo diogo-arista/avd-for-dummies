@@ -1,0 +1,127 @@
+---
+# DC1_FABRIC — the heart of the AVD configuration
+#
+# This file describes the entire fabric: BGP topology, loopback ranges,
+# VTEP ranges, MLAG settings, and which device connects to which.
+#
+# AVD reads this file (via the eos_designs role) and generates full EOS configs.
+
+# ── Fabric-wide settings ──────────────────────────────────────────────────────
+
+fabric_name: DC1_FABRIC
+
+# Underlay routing protocol (eBGP between spines and leaves)
+underlay_routing_protocol: ebgp
+
+# Overlay routing protocol (iBGP EVPN between leaves and spines as route-reflectors)
+overlay_routing_protocol: ebgp
+
+# BGP AS number pool — spines and leaves each get unique AS numbers
+# Spine AS: 65001
+# Leaf pair 1: 65101
+# Leaf pair 2: 65102
+bgp_peer_groups:
+  # Underlay peer group (eBGP)
+  ipv4_underlay_peers:
+    name: IPv4-UNDERLAY-PEERS
+    password: "AQQvKeimxJu+uGQ/yYvv9w=="
+
+  # Overlay peer group (iBGP EVPN)
+  evpn_overlay_peers:
+    name: EVPN-OVERLAY-PEERS
+    password: "q+VNViP5i4rVjW1cxFv2wA=="
+
+# ── IP address pools ──────────────────────────────────────────────────────────
+# AVD auto-assigns addresses from these pools
+
+# Loopback0 — used for BGP router-ID and EVPN overlay peering
+loopback_ipv4_pool: 192.168.255.0/24
+
+# Loopback1 — VTEP source interface (shared between MLAG peers)
+vtep_loopback_ipv4_pool: 192.168.254.0/24
+
+# Point-to-point underlay links (/31 pairs)
+underlay_p2p_network_summary: 192.168.0.0/22
+
+# MLAG peer-link IP pool
+mlag_peer_ipv4_pool: 10.255.252.0/24
+
+# MLAG L3 peer-link pool (for iBGP between MLAG peers)
+mlag_peer_l3_ipv4_pool: 10.255.251.0/24
+
+# ── Spine nodes ───────────────────────────────────────────────────────────────
+spine:
+  defaults:
+    platform: cEOS-lab
+    bgp_as: 65001
+    loopback_ipv4_pool: 192.168.255.0/24
+
+  nodes:
+    - name: spine1
+      id: 1
+      mgmt_ip: 172.20.20.11/24
+
+    - name: spine2
+      id: 2
+      mgmt_ip: 172.20.20.12/24
+
+# ── L3 Leaf nodes ─────────────────────────────────────────────────────────────
+l3leaf:
+  defaults:
+    platform: cEOS-lab
+    loopback_ipv4_pool: 192.168.255.0/24
+    loopback_ipv4_offset: 2          # Leaves start at .3 (spines use .1-.2)
+    vtep_loopback_ipv4_pool: 192.168.254.0/24
+    uplink_interfaces: [Ethernet1, Ethernet2]
+    uplink_switches: [spine1, spine2]
+    uplink_switch_interfaces: [Ethernet1, Ethernet2]  # overridden per pair
+    mlag_interfaces: [Ethernet3, Ethernet4]
+    mlag_peer_l3_ipv4_pool: 10.255.251.0/24
+    mlag_peer_ipv4_pool: 10.255.252.0/24
+    mlag_port_channel_id: 2000
+    spanning_tree_mode: mstp
+    spanning_tree_priority: 4096
+    virtual_router_mac_address: 00:1c:73:00:dc:01
+    # VRFs and VLANs this leaf group carries
+    filter:
+      tenants: [ACME]
+      tags: [prod, dev, web]
+
+  node_groups:
+    # ── Leaf pair 1 ────────────────────────────────────────────────────────────
+    - group: DC1_LEAF1_2
+      bgp_as: 65101
+      # Override the uplink_switch_interfaces to use the correct spine ports
+      uplink_switch_interfaces:
+        # leaf1 uses spine1:eth1 and spine2:eth1
+        - [Ethernet1, Ethernet1]
+        # leaf2 uses spine1:eth2 and spine2:eth2
+        - [Ethernet2, Ethernet2]
+      nodes:
+        - name: leaf1
+          id: 1
+          mgmt_ip: 172.20.20.13/24
+          mlag_peer_ipv4: 10.255.252.1   # leaf2's MLAG IP
+          uplink_switch_interfaces: [Ethernet1, Ethernet1]
+
+        - name: leaf2
+          id: 2
+          mgmt_ip: 172.20.20.14/24
+          mlag_peer_ipv4: 10.255.252.0   # leaf1's MLAG IP
+          uplink_switch_interfaces: [Ethernet2, Ethernet2]
+
+    # ── Leaf pair 2 ────────────────────────────────────────────────────────────
+    - group: DC1_LEAF3_4
+      bgp_as: 65102
+      nodes:
+        - name: leaf3
+          id: 3
+          mgmt_ip: 172.20.20.15/24
+          mlag_peer_ipv4: 10.255.252.5
+          uplink_switch_interfaces: [Ethernet3, Ethernet3]
+
+        - name: leaf4
+          id: 4
+          mgmt_ip: 172.20.20.16/24
+          mlag_peer_ipv4: 10.255.252.4
+          uplink_switch_interfaces: [Ethernet4, Ethernet4]

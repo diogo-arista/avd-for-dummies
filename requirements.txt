@@ -1,0 +1,20 @@
+# Python dependencies for the AVD lab
+# Install with: pip install -r requirements.txt
+
+# Ansible core — 2.15+ required by arista.avd 5.x
+ansible-core>=2.15.0,<2.17.0
+
+# AVD Python library (generates configs without Ansible, and provides helpers)
+pyavd[ansible]>=5.0.0
+
+# Useful for working with YAML in scripts
+pyyaml>=6.0
+
+# Jinja2 — used by AVD templates
+jinja2>=3.1.0
+
+# Netaddr — used by AVD for IP address manipulation
+netaddr>=0.8.0
+
+# Paramiko — used for SSH connections
+paramiko>=3.0.0
