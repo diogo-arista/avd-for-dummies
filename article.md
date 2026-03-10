@@ -327,28 +327,31 @@ This repository includes a dev container that installs everything automatically:
 
 ```
 .devcontainer/
-├── devcontainer.json   ← VS Code reads this to build the environment
-├── Dockerfile          ← defines the base image with pre-installed tools
-└── postCreate.sh       ← runs after the container starts (Ansible collections, dirs)
+├── devcontainer.json   ← VS Code reads this to configure the environment
+└── postCreate.sh       ← runs after the container starts and installs all tools
 ```
 
-**What the Dockerfile installs (baked into the image):**
-- Python 3.11 + pip
+> **Why no Dockerfile?** Codespaces restricts network access during the Docker image build phase, which causes `apt-get`, `curl`, and `pip` to fail unpredictably. Using a pre-built Microsoft base image avoids that problem entirely — all tool installations happen in `postCreate.sh`, which runs after the container is up with stable network access.
+
+**What `devcontainer.json` configures:**
+- Base image: `mcr.microsoft.com/devcontainers/python:3.11-bullseye` (Python 3.11 pre-installed)
+- Feature: Docker-in-Docker (required for containerlab to create containers)
+- VS Code extensions (auto-installed when the Codespace opens)
+
+**What `postCreate.sh` installs (runs once after container creation):**
 - containerlab binary
 - All Python packages from `requirements.txt` (Ansible, AVD Python library, etc.)
-
-**What `postCreate.sh` installs (runs at Codespace creation):**
-- Ansible Galaxy collections from `requirements.yml` — done at runtime so collection versions are always fresh
+- Ansible Galaxy collections from `requirements.yml`
 - Output directories (`intended/`, `documentation/`, `reports/`, `logs/`)
 
 **VS Code extensions installed automatically:**
-- `redhat.vscode-yaml` — YAML validation
+- `redhat.vscode-yaml` — YAML validation with AVD schema
 - `srl-labs.vscode-containerlab` — containerlab management
 - `ms-python.python` — Python support
 - `wholroyd.jinja` — Jinja2 highlighting
 
 **What you still need to provide manually:**
-The cEOS image cannot be bundled in the dev container because it requires an Arista account to download. After the container starts, upload the image and import it:
+The cEOS image cannot be bundled because it requires an Arista account to download. After the container starts, upload the image and import it:
 
 ```bash
 docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
@@ -359,16 +362,16 @@ docker import cEOS-lab-4.35.0F.tar.xz ceos:latest
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the [Dev Containers VS Code extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 2. Open the repo in VS Code.
 3. When prompted, click **Reopen in Container** (or open the Command Palette → **Dev Containers: Reopen in Container**).
-4. VS Code builds the image (first time only, ~3 minutes), then reopens inside it.
-5. The terminal inside VS Code is already inside the container with all tools available.
+4. VS Code pulls the base image and runs `postCreate.sh` — this takes 3–5 minutes on first run.
+5. The terminal inside VS Code is inside the container with all tools ready.
 
 #### Using the dev container on GitHub Codespaces
 
 1. Push the repo to GitHub.
 2. Click **Code → Codespaces → Create codespace on main**.
-3. GitHub builds the image using the Dockerfile (this is cached by Codespaces' prebuild feature if enabled).
-4. The `postCreate.sh` script runs automatically.
-5. Import the cEOS image when prompted.
+3. Codespaces pulls the base image and starts the container.
+4. `postCreate.sh` runs automatically in the background — watch progress in the terminal.
+5. Import the cEOS image when `postCreate.sh` finishes.
 
 ---
 

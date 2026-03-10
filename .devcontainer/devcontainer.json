@@ -1,9 +1,13 @@
 {
   "name": "AVD Lab",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
+
+  // Use the pre-built Microsoft Python image directly.
+  // Do NOT use a custom Dockerfile here: Codespaces restricts network access
+  // during the image build phase, which causes apt-get and curl to fail.
+  // All tool installations happen in postCreate.sh instead, which runs after
+  // the container is up with stable, unrestricted network access.
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
