@@ -39,7 +39,7 @@ ansible-galaxy collection install -r requirements.yml --force-with-deps
 echo "    Done."
 echo ""
 
-# ── 4. Output directories ─────────────────────────────────────────────────────
+# ── 4. Output directories + script permissions ────────────────────────────────
 echo "==> Creating output directories..."
 for lab in "." "codespaces"; do
     mkdir -p "${lab}/intended/configs"
@@ -48,6 +48,7 @@ for lab in "." "codespaces"; do
     mkdir -p "${lab}/reports"
     mkdir -p "${lab}/logs"
 done
+chmod +x codespaces/start-lab.sh
 echo "    Done."
 echo ""
 
@@ -58,23 +59,19 @@ ansible --version | head -1            2>/dev/null || echo "    ansible      : N
 containerlab version 2>/dev/null | head -1         || echo "    containerlab : NOT FOUND"
 echo ""
 
-# ── 4. cEOS image reminder ────────────────────────────────────────────────────
+# ── 5. Ready ──────────────────────────────────────────────────────────────────
 echo "============================================================"
-echo "  IMPORTANT: Import the cEOS image before starting the lab"
+echo "  Environment ready! One manual step before starting:"
 echo ""
-echo "  1. Upload cEOS-lab-4.35.0F.tar.xz to this Codespace"
-echo "     (drag and drop into the VS Code terminal)"
+echo "  Import the cEOS image (requires an Arista account to download):"
+echo "    docker import cEOS-lab-4.35.0F.tar.xz ceos:latest"
 echo ""
-echo "  2. Import it:"
-echo "     docker import cEOS-lab-4.35.0F.tar.xz ceos:latest"
+echo "  Then start the full lab with a single command:"
+echo "    codespaces/start-lab.sh"
 echo ""
-echo "  3. Verify:"
-echo "     docker images | grep ceos"
+echo "  start-lab.sh will:"
+echo "    - Deploy the containerlab topology"
+echo "    - Wait for all nodes to boot"
+echo "    - Build and deploy AVD configurations automatically"
 echo "============================================================"
-echo ""
-echo "==> Quick start (Codespaces lab):"
-echo "      cd codespaces"
-echo "      containerlab deploy -t topology.clab.yml"
-echo "      ansible-playbook playbooks/build.yml"
-echo "      ansible-playbook playbooks/deploy.yml"
 echo ""
