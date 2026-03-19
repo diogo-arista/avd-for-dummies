@@ -56,6 +56,8 @@ topology:
     host2:
       kind: linux
       image: ghcr.io/hellt/network-multitool
+      cpu: 1
+      cpu-set: 2-3
       mgmt-ipv4: 172.20.20.32
 
   links:
